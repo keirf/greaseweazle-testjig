@@ -51,7 +51,7 @@ int main(void)
     printk("** Keir Fraser <keir.xen@gmail.com>\n");
     printk("** https://github.com/keirf/FlashFloppy\n\n");
 
-    display_init();
+    led_7seg_init();
 
     usbh_cdc_init();
 

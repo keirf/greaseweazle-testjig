@@ -13,7 +13,7 @@ FLAGS  = -g -Os -nostdlib -std=gnu99 -iquote $(ROOT)/inc
 FLAGS += -Wall -Werror -Wno-format -Wdeclaration-after-statement
 FLAGS += -Wstrict-prototypes -Wredundant-decls -Wnested-externs
 FLAGS += -fno-common -fno-exceptions -fno-strict-aliasing
-FLAGS += -mlittle-endian -mthumb -mcpu=cortex-m3 -mfloat-abi=soft
+FLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mfloat-abi=soft
 FLAGS += -Wno-unused-value -ffunction-sections
 
 ifneq ($(debug),y)

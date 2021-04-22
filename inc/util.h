@@ -55,9 +55,6 @@ int snprintf(char *str, size_t size, const char *format, ...)
 #define htobe16(x) _rev16(x)
 #define htobe32(x) _rev32(x)
 
-/* Board-specific callouts */
-void board_init(void);
-
 #if !defined(NDEBUG)
 /* Log output, to serial console or logfile. */
 int vprintk(const char *format, va_list ap)
@@ -82,9 +79,6 @@ void console_crash_on_input(void);
 
 /* CRC-CCITT */
 uint16_t crc16_ccitt(const void *buf, size_t len, uint16_t crc);
-
-/* Display setup and identification. */
-void display_init(void);
 
 /* Display: 3-digit 7-segment display */
 void led_7seg_init(void);
@@ -120,14 +114,7 @@ void EXC_unused(void);
 
 /* IRQ priorities, 0 (highest) to 15 (lowest). */
 #define RESET_IRQ_PRI         0
-#define FLOPPY_IRQ_SEL_PRI    1
-#define FLOPPY_IRQ_WGATE_PRI  2
-#define FLOPPY_IRQ_STEP_PRI   3
 #define TIMER_IRQ_PRI         4
-#define WDATA_IRQ_PRI         7
-#define RDATA_IRQ_PRI         8
-#define FLOPPY_SOFTIRQ_PRI    9
-#define I2C_IRQ_PRI          13
 #define USB_IRQ_PRI          14
 #define CONSOLE_IRQ_PRI      15
 

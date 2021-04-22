@@ -69,7 +69,6 @@ extern uint32_t vector_table[];
 /* System */
 void stm32_init(void);
 void system_reset(void) __attribute__((noreturn));
-extern bool_t is_artery_mcu;
 
 /* Clocks */
 #define SYSCLK_MHZ 72
@@ -120,15 +119,6 @@ void gpio_configure_pin(GPIO gpio, unsigned int pin, unsigned int mode);
 #define gpio_write_pins(gpio, mask, level) \
     ((gpio)->bsrr = (uint32_t)(mask) << ((level) ? 0 : 16))
 #define gpio_read_pin(gpio, pin) (((gpio)->idr >> (pin)) & 1)
-
-/* FPEC */
-void fpec_init(void);
-void fpec_page_erase(uint32_t flash_address);
-void fpec_write(const void *data, unsigned int size, uint32_t flash_address);
-
-#define FLASH_PAGE_SIZE 2048
-extern unsigned int flash_page_size;
-extern unsigned int ram_kb;
 
 /*
  * Local variables:

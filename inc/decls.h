@@ -22,9 +22,6 @@
 
 #include "time.h"
 #include "util.h"
-#include "list.h"
-#include "cancellation.h"
-#include "spi.h"
 #include "timer.h"
 #include "cdc_acm_protocol.h"
 
