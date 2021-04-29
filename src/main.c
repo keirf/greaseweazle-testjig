@@ -13,20 +13,45 @@
 
 int EXC_reset(void) __attribute__((alias("main")));
 
+static int outp[] = { 8, 26, 28, 30, 34 };
+static int inp[] = { 2, 4, 6, 10, 12, 14, 16, 18, 20, 22, 24, 32, 33 };
+
 static uint32_t usbh_buf[512/8];
 
-static uint8_t bus[] = { CMD_SET_BUS_TYPE, 3, BUS_SHUGART };
-static uint8_t busrsp[] = { CMD_SET_BUS_TYPE, 0 };
+static uint8_t info[] = { CMD_GET_INFO, 3, 0 };
 
-static uint8_t select[] = { CMD_SELECT, 3, 0 };
-static uint8_t selectrsp[] = { CMD_SELECT, 0 };
-
-static uint8_t seek[] = { CMD_SEEK, 3, 80 };
-static uint8_t seekrsp[] = { CMD_SEEK, ACK_NO_TRK0 };
+static uint8_t testmode[] = { CMD_TEST_MODE, 10, 0x4e, 0x4b, 0x50, 0x6e,
+                            0xd3, 0x10, 0x29, 0x38 };
+static uint8_t testmodersp[] = { CMD_TEST_MODE, 0 };
 
 static uint8_t rspbuf[64];
 
+static struct cmd tcmd;
+static struct rsp trsp;
+
+struct gw_info gw_info;
+
 static int state = 0;
+
+#define CMD_option_bytes 0
+#define CMD_pins         1
+#define CMD_led          2
+
+struct cmd {
+    uint32_t cmd;
+    union {
+        uint8_t pins[64/8];
+        uint32_t x[28/4];
+    } u;
+};
+
+struct rsp {
+    union {
+        uint8_t opt[32];
+        uint8_t pins[64/8];
+        uint32_t x[32/4];
+    } u;
+};
 
 #define ERR_TX_TIMEOUT      10
 #define ERR_TX_BAD_CALLBACK 11
@@ -48,11 +73,9 @@ static struct {
     time_t time;
 } cmdrsp;
 
-static void error(unsigned int nr) __attribute__((noreturn));
-static void error(unsigned int nr)
+static void _error(char *s) __attribute__((noreturn));
+static void _error(char *s)
 {
-    char s[4];
-    snprintf(s, sizeof(s), "E%02u", nr);
     for (;;) {
         if (!usbh_cdc_connected())
             system_reset();
@@ -65,18 +88,24 @@ static void error(unsigned int nr)
     }
 }
 
-static void success(void) __attribute__((noreturn));
-static void success(void)
+static void error(unsigned int nr) __attribute__((noreturn));
+static void error(unsigned int nr)
 {
-    led_7seg_write_string("---");
-    while (usbh_cdc_connected())
-        continue;
-    system_reset();
+    char s[4];
+    snprintf(s, sizeof(s), "E%02u", nr);
+    _error(s);
+}
+
+static void pin_error(unsigned int nr) __attribute__((noreturn));
+static void pin_error(unsigned int nr)
+{
+    char s[4];
+    snprintf(s, sizeof(s), "P%02u", nr);
+    _error(s);
 }
 
 void USBH_CDC_TransmitCallback(void)
 {
-    printk("TX DONE\n");
     if (cmdrsp.state != CMDRSP_TX_BUSY)
         error(ERR_TX_BAD_CALLBACK);
     cmdrsp.state = CMDRSP_TX_DONE;
@@ -84,7 +113,6 @@ void USBH_CDC_TransmitCallback(void)
 
 void USBH_CDC_ReceiveCallback(void)
 {
-    printk("RX DONE %02x %02x\n", rspbuf[0], rspbuf[1]);
     if (cmdrsp.state != CMDRSP_RX_BUSY)
         error(ERR_RX_BAD_CALLBACK);
     cmdrsp.state = CMDRSP_RX_DONE;
@@ -100,7 +128,6 @@ static void command_response_handle(void)
             error(ERR_TX_TIMEOUT);
         break;
     case CMDRSP_TX_DONE:
-        printk("Receiving %d\n", cmdrsp.rsp_len);
         USBH_CDC_Receive(rspbuf, cmdrsp.rsp_len);
         cmdrsp.state = CMDRSP_RX_BUSY;
         cmdrsp.time = time_now();
@@ -110,7 +137,7 @@ static void command_response_handle(void)
             error(ERR_RX_TIMEOUT);
         break;
     case CMDRSP_RX_DONE:
-        if (memcmp(rspbuf, cmdrsp.rsp, cmdrsp.rsp_len)) {
+        if (cmdrsp.rsp && memcmp(rspbuf, cmdrsp.rsp, cmdrsp.rsp_len)) {
             printk("RX Mismatch: [ ");
             for (i = 0; i < cmdrsp.rsp_len; i++)
                 printk("%02x ", rspbuf[i]);
@@ -125,8 +152,8 @@ static void command_response_handle(void)
     }
 }
 
-static void command_response(uint8_t *cmd, unsigned int cmd_len,
-                             uint8_t *rsp, unsigned int rsp_len)
+static void command_response(void *cmd, unsigned int cmd_len,
+                             void *rsp, unsigned int rsp_len)
 {
     USBH_CDC_Transmit(cmd, cmd_len);
     cmdrsp.state = CMDRSP_TX_BUSY;
@@ -136,8 +163,55 @@ static void command_response(uint8_t *cmd, unsigned int cmd_len,
     cmdrsp.rsp_len = rsp_len;
 }
 
+static void cmd_led(int state)
+{
+    memset(&tcmd, 0, sizeof(tcmd));
+    tcmd.cmd = CMD_led;
+    tcmd.u.pins[0] = state;
+    command_response(&tcmd, sizeof(tcmd),
+                     NULL, sizeof(trsp));
+}
+
+static void cmd_set_pin(int pin)
+{
+    memset(&tcmd, 0, sizeof(tcmd));
+    tcmd.cmd = CMD_pins;
+    memset(tcmd.u.pins, 0xff, sizeof(tcmd.u.pins));
+    if (pin >= 0)
+        tcmd.u.pins[pin/8] &= ~(1<<(pin&7));
+    command_response(&tcmd, sizeof(tcmd),
+                     NULL, sizeof(trsp));
+}
+
+static void check_pins(int asserted_pin)
+{
+    int i;
+    pinmask_t mask = read_pinmask();
+
+    memcpy(&trsp, rspbuf, sizeof(trsp));
+    for (i = 0; i < ARRAY_SIZE(outp); i++) {
+        int pin = outp[i];
+        int level = !!(trsp.u.pins[pin/8] & (1<<(pin&7)));
+        if (((pin == asserted_pin) && level)
+            || ((pin != asserted_pin) && !level))
+            pin_error(pin);
+    }
+
+    for (i = 0; i < ARRAY_SIZE(inp); i++) {
+        int pin = inp[i];
+        int level = (mask >> pin) & 1;
+        if (((pin == asserted_pin) && level)
+            || ((pin != asserted_pin) && !level))
+            pin_error(pin);
+    }
+}
+
 int main(void)
 {
+    int pin_iter = 0;
+    int outer_iter = 0;
+    int success = FALSE;
+
     /* Relocate DATA. Initialise BSS. */
     if (_sdat != _ldat)
         memcpy(_sdat, _ldat, _edat-_sdat);
@@ -160,8 +234,6 @@ int main(void)
     usbh_cdc_buffer_set((void *)usbh_buf);
     led_7seg_write_string("USB");
 
-    print_pinmask(read_pinmask());
-
     for (;;) {
         usbh_cdc_process();
         if (!usbh_cdc_connected()) {
@@ -175,24 +247,122 @@ int main(void)
         }
 
         state++;
-        led_7seg_write_decimal(state);
+        if (!success)
+            led_7seg_write_decimal(state);
         switch (state) {
         case 1:
-            command_response(bus, sizeof(bus),
-                             busrsp, sizeof(busrsp));
+            command_response(info, sizeof(info),
+                             NULL, 34);
             break;
-        case 2:
-            command_response(select, sizeof(select),
-                             selectrsp, sizeof(selectrsp));
-            break;
-        case 3:
-            command_response(seek, sizeof(seek),
-                             seekrsp, sizeof(seekrsp));
-            break;
-        case 4:
-            success();
+        case 2: {
+            memcpy(&gw_info, rspbuf+2, sizeof(gw_info));
+            printk("v%d.%d %d model:%d.%d\n",
+                   gw_info.fw_major, gw_info.fw_minor,
+                   gw_info.max_cmd, gw_info.hw_model, gw_info.hw_submodel);
+            if ((gw_info.max_cmd < CMD_MAX)
+                || !gw_info.is_main_firmware)
+                error(ERR_BAD_RESPONSE);
             break;
         }
+        case 3:
+            command_response(testmode, sizeof(testmode),
+                             testmodersp, sizeof(testmodersp));
+            break;
+
+            /* Drive the GW outputs (testboard inputs) one by one. */
+        case 4:
+            if (pin_iter >= ARRAY_SIZE(inp)) {
+                pin_iter = 0;
+                if (outer_iter++ > 10) {
+                    outer_iter = 0;
+                    state = 6-1; /* break */
+                    break;
+                }
+            }
+            cmd_set_pin(inp[pin_iter]);
+            break;
+        case 5:
+            check_pins(inp[pin_iter]);
+            pin_iter++;
+            state = 4-1; /* loop */
+            break;
+
+            /* Check all pins HIGH */
+        case 6:
+            cmd_set_pin(-1);
+            break;
+        case 7:
+            check_pins(-1);
+            break;
+
+            /* Drive the GW inputs (testboard outputs) one by one. */
+        case 8:
+            if (pin_iter >= ARRAY_SIZE(outp)) {
+                pin_iter = 0;
+                if (outer_iter++ > 10) {
+                    outer_iter = 0;
+                    state = 11-1; /* break */
+                    break;
+                }
+            }
+            set_pinmask(-1LL & ~(1ull << outp[pin_iter]));
+            break;
+        case 9:
+            cmd_set_pin(-1);
+            break;
+        case 10:
+            check_pins(outp[pin_iter]);
+            pin_iter++;
+            state = 8-1; /* loop */
+            break;
+
+            /* Check all pins LOW */
+        case 11:
+            set_pinmask(0);
+            memset(&tcmd, 0, sizeof(tcmd));
+            tcmd.cmd = CMD_pins;
+            command_response(&tcmd, sizeof(tcmd),
+                             NULL, sizeof(trsp));
+            break;
+        case 12: {
+            int i;
+            pinmask_t mask;
+            delay_ms(100); /* linger with drivers working */
+            mask = read_pinmask();
+            memcpy(&trsp, rspbuf, sizeof(trsp));
+            for (i = 0; i < ARRAY_SIZE(outp); i++) {
+                int pin = outp[i];
+                int level = !!(trsp.u.pins[pin/8] & (1<<(pin&7)));
+                if (level)
+                    pin_error(pin);
+            }
+            for (i = 0; i < ARRAY_SIZE(inp); i++) {
+                int pin = inp[i];
+                int level = (mask >> pin) & 1;
+                if (level)
+                    pin_error(pin);
+            }
+            break;
+        }
+
+            /* Finish and flash the LED */
+        case 13:
+            set_pinmask(-1LL);
+            cmd_set_pin(-1);
+            led_7seg_write_string("---");
+            success = TRUE;
+            break;
+        case 14:
+            delay_ms(100);
+            cmd_led(1);
+            break;
+        case 15:
+            delay_ms(100);
+            cmd_led(0);
+            state = 14-1;
+            break;
+        }
+
     }
 
     return 0;

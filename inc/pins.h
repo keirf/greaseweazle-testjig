@@ -19,6 +19,7 @@ typedef uint64_t pinmask_t;
 
 GPIO gpio_from_id(uint8_t id);
 void pins_init(void);
+void set_pinmask(pinmask_t mask);
 pinmask_t read_pinmask(void);
 void print_pinmask(pinmask_t mask);
 

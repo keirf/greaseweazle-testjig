@@ -67,7 +67,13 @@
 #define CMD_SOURCE_BYTES   18
 /* CMD_SINK_BYTES, length=6. Argument is gw_sink_source_bytes. */
 #define CMD_SINK_BYTES     19
-#define CMD_MAX            19
+/* CMD_GET_PIN, length=3, pin#. Successful ACK is followed by pin-level byte
+ * (1=High, 0=Low). Unsupported pin returns ACK_BAD_PIN and no pin level. */
+#define CMD_GET_PIN        20
+/* CMD_TEST_MODE, length=10, 0x6e504b4e, 0x382910d3 
+ * Responds ACK_OKAY and then switches to board test mode until reset. */
+#define CMD_TEST_MODE      21
+#define CMD_MAX            21
 
 
 /*

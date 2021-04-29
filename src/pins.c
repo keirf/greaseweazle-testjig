@@ -60,6 +60,14 @@ void pins_init(void)
     }
 }
 
+void set_pinmask(pinmask_t mask)
+{
+    const struct pin_mapping *opin;
+    for (opin = out_pins; opin->pin_id != 0; opin++)
+        gpio_write_pin(gpio_from_id(opin->gpio_bank), opin->gpio_pin,
+                       (mask >> opin->pin_id) & 1);
+}
+
 pinmask_t read_pinmask(void)
 {
     const struct pin_mapping *ipin;
