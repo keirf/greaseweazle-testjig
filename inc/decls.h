@@ -23,6 +23,7 @@
 #include "time.h"
 #include "util.h"
 #include "timer.h"
+#include "pins.h"
 #include "cdc_acm_protocol.h"
 
 /*

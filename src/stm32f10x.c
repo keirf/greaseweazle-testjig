@@ -153,6 +153,7 @@ static void peripheral_init(void)
     rcc->apb2enr = (RCC_APB2ENR_IOPAEN |
                     RCC_APB2ENR_IOPBEN |
                     RCC_APB2ENR_IOPCEN |
+                    RCC_APB2ENR_IOPFEN |
                     RCC_APB2ENR_AFIOEN |
                     RCC_APB2ENR_TIM1EN);
     rcc->ahbenr = RCC_AHBENR_DMA1EN;

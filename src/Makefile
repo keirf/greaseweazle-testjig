@@ -8,6 +8,7 @@ OBJS += time.o
 OBJS += timer.o
 OBJS += util.o
 OBJS += led_7seg.o
+OBJS += pins.o
 
 OBJS-$(debug) += console.o
 
