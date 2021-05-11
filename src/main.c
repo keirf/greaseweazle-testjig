@@ -10,6 +10,7 @@
  */
 
 #include "usb/stm32_usbh/inc/usbh_cdc.h"
+#include "testmode.h"
 
 int EXC_reset(void) __attribute__((alias("main")));
 
@@ -32,26 +33,6 @@ static struct rsp trsp;
 struct gw_info gw_info;
 
 static int state = 0;
-
-#define CMD_option_bytes 0
-#define CMD_pins         1
-#define CMD_led          2
-
-struct cmd {
-    uint32_t cmd;
-    union {
-        uint8_t pins[64/8];
-        uint32_t x[28/4];
-    } u;
-};
-
-struct rsp {
-    union {
-        uint8_t opt[32];
-        uint8_t pins[64/8];
-        uint32_t x[32/4];
-    } u;
-};
 
 #define ERR_TX_TIMEOUT      10
 #define ERR_TX_BAD_CALLBACK 11
@@ -256,7 +237,7 @@ int main(void)
             break;
         case 2: {
             memcpy(&gw_info, rspbuf+2, sizeof(gw_info));
-            printk("v%d.%d %d model:%d.%d\n",
+            printk("GW v%d.%d max_cmd=%d model=%d.%d\n",
                    gw_info.fw_major, gw_info.fw_minor,
                    gw_info.max_cmd, gw_info.hw_model, gw_info.hw_submodel);
             if ((gw_info.max_cmd < CMD_MAX)
@@ -370,24 +351,42 @@ int main(void)
             for (i = 2; i < 16; i += 2)
                 if (trsp.u.opt[i] != 0xff)
                     _error("OPT");
+            printk("Option Bytes:\n");
+            for (i = 0; i < 32; i++) {
+                printk("%02x ", trsp.u.opt[i]);
+                if ((i&15)==15) printk("\n");
+            }
             break;
         }
 
-            /* Finish and flash the LED */
+            /* Test headers */
         case 15:
+            memset(&tcmd, 0, sizeof(tcmd));
+            tcmd.cmd = CMD_test_headers;
+            command_response(&tcmd, sizeof(tcmd),
+                             NULL, sizeof(trsp));
+            break;
+        case 16:
+            memcpy(&trsp, rspbuf, sizeof(trsp));
+            if (trsp.u.x[0] != TESTHEADER_success)
+                _error("HDR");
+            break;
+
+            /* Finish and flash the LED */
+        case 17:
             set_pinmask(-1LL);
             cmd_set_pin(-1);
             led_7seg_write_string("---");
             success = TRUE;
             break;
-        case 16:
+        case 18:
             delay_ms(100);
             cmd_led(1);
             break;
-        case 17:
+        case 19:
             delay_ms(100);
             cmd_led(0);
-            state = 16-1;
+            state = 18-1;
             break;
         }
 
