@@ -345,21 +345,49 @@ int main(void)
             break;
         }
 
-            /* Finish and flash the LED */
+            /* (AT32F4) Check option bytes 
+             * From factory:
+             *  a5 5a ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
+             * OpenOCD stm32f1x unlock 0: 
+             *  a5 5a ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 */
         case 13:
+            if (gw_info.hw_model != 4) {
+                /* Skip for other models */
+                state = 15-1;
+                break;
+            }
+            memset(&tcmd, 0, sizeof(tcmd));
+            tcmd.cmd = CMD_option_bytes;
+            command_response(&tcmd, sizeof(tcmd),
+                             NULL, sizeof(trsp));
+            break;
+        case 14: {
+            int i;
+            memcpy(&trsp, rspbuf, sizeof(trsp));
+            if ((trsp.u.opt[0] != 0xa5)
+                || (trsp.u.opt[1] != 0x5a))
+                _error("OPT");
+            for (i = 2; i < 16; i += 2)
+                if (trsp.u.opt[i] != 0xff)
+                    _error("OPT");
+            break;
+        }
+
+            /* Finish and flash the LED */
+        case 15:
             set_pinmask(-1LL);
             cmd_set_pin(-1);
             led_7seg_write_string("---");
             success = TRUE;
             break;
-        case 14:
+        case 16:
             delay_ms(100);
             cmd_led(1);
             break;
-        case 15:
+        case 17:
             delay_ms(100);
             cmd_led(0);
-            state = 14-1;
+            state = 16-1;
             break;
         }
 
