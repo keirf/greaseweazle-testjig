@@ -26,6 +26,7 @@ static uint8_t testmode[] = { CMD_TEST_MODE, 10, 0x4e, 0x4b, 0x50, 0x6e,
 static uint8_t testmodersp[] = { CMD_TEST_MODE, 0 };
 
 static uint8_t rspbuf[64];
+static uint16_t dmabuf[32];
 
 static struct cmd tcmd;
 static struct rsp trsp;
@@ -185,6 +186,55 @@ static void check_pins(int asserted_pin)
             || ((pin != asserted_pin) && !level))
             pin_error(pin);
     }
+}
+
+/* Confirm that WDAT is oscillating at 500kHz. */
+static void test_wdat_osc(void)
+{
+    int i;
+
+    /* Take timestamps of WDAT falling edges. */
+    tim1->psc = 0;
+    tim1->arr = 0xffff;
+    tim1->ccmr1 = TIM_CCMR1_CC1S(TIM_CCS_INPUT_TI1);
+    tim1->dier = TIM_DIER_CC1DE;
+    tim1->cr2 = 0;
+    tim1->egr = TIM_EGR_UG; /* update CNT, PSC, ARR */
+    tim1->sr = 0; /* dummy write */
+    dma1->ifcr = DMA_IFCR_CTCIF(2);
+    dma1->ch2.cmar = (uint32_t)(unsigned long)dmabuf;
+    dma1->ch2.cndtr = ARRAY_SIZE(dmabuf);
+    dma1->ch2.cpar = (uint32_t)(unsigned long)&tim1->ccr1;
+    dma1->ch2.ccr = (DMA_CCR_PL_HIGH |
+                     DMA_CCR_MSIZE_16BIT |
+                     DMA_CCR_PSIZE_16BIT |
+                     DMA_CCR_MINC |
+                     DMA_CCR_DIR_P2M |
+                     DMA_CCR_EN);
+    tim1->ccer = TIM_CCER_CC1E | TIM_CCER_CC1P;
+    tim1->cr1 = TIM_CR1_CEN;
+
+    /* Wait for DMA buffer to fill, and confirm the buffer is indeed full. */
+    delay_ms(1);
+    if (!(dma1->isr & DMA_ISR_TCIF(2)))
+        _error("OSC");
+
+    /* Turn off timer and DMA. */
+    tim1->ccer = 0;
+    tim1->cr1 = 0;
+    tim1->sr = 0;
+    dma1->ch2.ccr = 0;
+
+    /* Check that time intervals are all 2us +/- 2.5% (55ns) */
+    printk("Times: ");
+    for (i = ARRAY_SIZE(dmabuf)-1; i > 0; i--) {
+        uint16_t x = dmabuf[i] - dmabuf[i-1];
+        printk("%d ", x);
+        /* Very liberal bounds check. */
+        if ((x < 140) || (x > 148))
+            _error("OSC");
+    }
+    printk("\n");
 }
 
 int main(void)
@@ -372,21 +422,37 @@ int main(void)
                 _error("HDR");
             break;
 
-            /* Finish and flash the LED */
+            /* Test WDAT oscillation */
         case 17:
+            memset(&tcmd, 0, sizeof(tcmd));
+            tcmd.cmd = CMD_wdat_osc_on;
+            command_response(&tcmd, sizeof(tcmd),
+                             NULL, sizeof(trsp));
+            break;
+        case 18: {
+            test_wdat_osc();
+            memset(&tcmd, 0, sizeof(tcmd));
+            tcmd.cmd = CMD_wdat_osc_off;
+            command_response(&tcmd, sizeof(tcmd),
+                             NULL, sizeof(trsp));
+            break;
+        }
+
+            /* Finish and flash the LED */
+        case 19:
             set_pinmask(-1LL);
             cmd_set_pin(-1);
             led_7seg_write_string("---");
             success = TRUE;
             break;
-        case 18:
+        case 20:
             delay_ms(100);
             cmd_led(1);
             break;
-        case 19:
+        case 21:
             delay_ms(100);
             cmd_led(0);
-            state = 18-1;
+            state = 20-1;
             break;
         }
 
