@@ -352,10 +352,8 @@ static void CDC_ProcessReception(USB_OTG_CORE_HANDLE *pdev ,
       {
         length = HCD_GetXferCnt(pdev, CDC_Handle->DataItf.InPipe);
 
-        if (((CDC_Handle->RxDataLength - length) > 0U) && (length > CDC_Handle->DataItf.InEpSize))
+        if (length == 0)
         {
-          CDC_Handle->RxDataLength -= length ;
-          CDC_Handle->pRxData += length;
           CDC_Handle->data_rx_state = CDC_RECEIVE_DATA;
         }
         else
