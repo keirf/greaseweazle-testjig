@@ -376,17 +376,16 @@ int main(void)
             break;
         }
 
-            /* (AT32F4) Check option bytes 
+            /* Check option bytes 
+             * STM32F1, AT32F4:
              * From factory:
              *  a5 5a ff ff ff ff ff ff ff ff ff ff ff ff ff ff 
              * OpenOCD stm32f1x unlock 0: 
-             *  a5 5a ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 */
+             *  a5 5a ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 ff 00 
+             * STM32F730: 
+             *  ff aa 00 55 ff aa 00 55 ff ff 00 00 ff ff 00 00 
+             *  80 00 7f ff 80 00 7f ff 40 00 bf ff 40 00 bf ff */
         case 13:
-            if (gw_info.hw_model != 4) {
-                /* Skip for other models */
-                state = 15-1;
-                break;
-            }
             memset(&tcmd, 0, sizeof(tcmd));
             tcmd.cmd = CMD_option_bytes;
             command_response(&tcmd, sizeof(tcmd),
@@ -395,12 +394,22 @@ int main(void)
         case 14: {
             int i;
             memcpy(&trsp, rspbuf, sizeof(trsp));
-            if ((trsp.u.opt[0] != 0xa5)
-                || (trsp.u.opt[1] != 0x5a))
-                _error("OPT");
-            for (i = 2; i < 16; i += 2)
-                if (trsp.u.opt[i] != 0xff)
+            switch (gw_info.hw_model) {
+            case 1:
+            case 4:
+                if ((trsp.u.opt[0] != 0xa5)
+                    || (trsp.u.opt[1] != 0x5a))
                     _error("OPT");
+                for (i = 2; i < 16; i += 2)
+                    if (trsp.u.opt[i] != 0xff)
+                        _error("OPT");
+                break;
+            case 7:
+                if ((trsp.u.opt[0] != 0xff)
+                    || (trsp.u.opt[1] != 0xaa))
+                    _error("OPT");
+                break;
+            }
             printk("Option Bytes:\n");
             for (i = 0; i < 32; i++) {
                 printk("%02x ", trsp.u.opt[i]);
