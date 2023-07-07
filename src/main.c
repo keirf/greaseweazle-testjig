@@ -58,6 +58,8 @@ static struct {
 static void _error(char *s) __attribute__((noreturn));
 static void _error(char *s)
 {
+    printk("ERROR, state %d: '%s'\n", state, s);
+
     for (;;) {
         if (!usbh_cdc_connected())
             system_reset();
@@ -237,6 +239,54 @@ static void test_wdat_osc(void)
     printk("\n");
 }
 
+static void adc_init(void)
+{
+    /* Turn on the peripheral and then wait a while. */
+    rcc->apb2enr |= RCC_APB2ENR_ADC1EN;
+    adc1->cr1 = 0;
+    adc1->cr2 = ADC_CR2_ADON;
+    delay_us(100);
+
+    /* Perform power-on calibration. */
+    adc1->cr2 |= ADC_CR2_RSTCAL;
+    while (adc1->cr2 & ADC_CR2_RSTCAL)
+        continue;
+    adc1->cr2 |= ADC_CR2_CAL;
+    while (adc1->cr2 & ADC_CR2_CAL)
+        continue;
+
+    /* Maximal sample times as we are in no hurry. */
+    adc1->smpr1 = (1u<<24)-1;
+    adc1->smpr2 = (1u<<30)-1;
+}
+
+static int adc_convert_channel(unsigned int n)
+{
+    /* One conversion: Channel n */
+    adc1->sr = 0;
+    adc1->sqr3 = n;
+    adc1->sqr1 = 0;
+    adc1->cr2 |= ADC_CR2_ADON;
+    while (!(adc1->sr & ADC_SR_EOC))
+        continue;
+    return adc1->dr & 0xfff;
+}
+
+static bool_t test_usb_cc(void)
+{
+    int i, val;
+
+    /* Grab CC1 and CC2 values from pins PA0 and PA1. */
+    for (i = 0; i < 2; i++) {
+        val = adc_convert_channel(i);
+        /* Looking for Vdd/2 +/- 2% on the connected CC line. */
+        if ((val >= 0x7d8) && (val <= 0x828))
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
 int main(void)
 {
     int pin_iter = 0;
@@ -260,6 +310,8 @@ int main(void)
     printk("** https://github.com/keirf/FlashFloppy\n\n");
 
     led_7seg_init();
+
+    adc_init();
 
     usbh_cdc_init();
     usbh_cdc_buffer_set((void *)usbh_buf);
@@ -447,21 +499,30 @@ int main(void)
             break;
         }
 
-            /* Finish and flash the LED */
+            /* USB-C CCn voltage check */
         case 19:
+            if ((gw_info.hw_model == 4) && (gw_info.hw_submodel == 2)) {
+                /* Greaseweazle V4.1 has USB-C with CCx pulldowns. */
+                if (!test_usb_cc())
+                    _error("CCN");
+            }
+            break;
+
+            /* Finish and flash the LED */
+        case 20:
             set_pinmask(-1LL);
             cmd_set_pin(-1);
             led_7seg_write_string("---");
             success = TRUE;
             break;
-        case 20:
+        case 21:
             delay_ms(100);
             cmd_led(1);
             break;
-        case 21:
+        case 22:
             delay_ms(100);
             cmd_led(0);
-            state = 20-1;
+            state = 21-1;
             break;
         }
 

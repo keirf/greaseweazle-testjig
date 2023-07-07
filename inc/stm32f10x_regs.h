@@ -519,6 +519,87 @@ struct tim {
 #define TIM6_BASE 0x40001000
 #define TIM7_BASE 0x40001400
 
+/* ADC */
+struct adc {
+    uint32_t sr;      /* 00: Status */
+    uint32_t cr1;     /* 04: Control 1 */
+    uint32_t cr2;     /* 08: Control 2 */
+    uint32_t smpr1;   /* 0C: Sample time 1 */
+    uint32_t smpr2;   /* 10: Sample time 2 */
+    uint32_t jofr1;   /* 14: Injected channel data offset 1 */
+    uint32_t jofr2;   /* 18: Injected channel data offset 2 */
+    uint32_t jofr3;   /* 1C: Injected channel data offset 3 */
+    uint32_t jofr4;   /* 20: Injected channel data offset 4 */
+    uint32_t htr;     /* 24: High threshold */
+    uint32_t ltr;     /* 28: Low threshold */
+    uint32_t sqr1;    /* 2C: Sequence 1 */
+    uint32_t sqr2;    /* 30: Sequence 2 */
+    uint32_t sqr3;    /* 34: Sequence 3 */
+    uint32_t jqr;     /* 38: Injected sequence */
+    uint32_t jdr1;    /* 3C: Injected data 1 */
+    uint32_t jdr2;    /* 40: Injected data 1 */
+    uint32_t jdr3;    /* 44: Injected data 1 */
+    uint32_t jdr4;    /* 48: Injected data 1 */
+    uint32_t dr;      /* 4C: Data */
+};
+
+#define ADC_SR_STRT       (1u<< 4)
+#define ADC_SR_JSTRT      (1u<< 3)
+#define ADC_SR_JEOC       (1u<< 2)
+#define ADC_SR_EOC        (1u<< 1)
+#define ADC_SR_AWD        (1u<< 0)
+
+#define ADC_CR1_AWDEN     (1u<<23)
+#define ADC_CR1_JAWDEN    (1u<<22)
+#define ADC_CR1_DUALMOD(x) ((x)<<16)
+#define ADC_CR1_DISCNUM(x) ((x)<<13)
+#define ADC_CR1_JDISCEN   (1u<<12)
+#define ADC_CR1_DISCEN    (1u<<11)
+#define ADC_CR1_JAUTO     (1u<<10)
+#define ADC_CR1_AWDSGL    (1u<< 9)
+#define ADC_CR1_SCAN      (1u<< 8)
+#define ADC_CR1_JEOCIE    (1u<< 7)
+#define ADC_CR1_AWDIE     (1u<< 6)
+#define ADC_CR1_EOCIE     (1u<< 5)
+#define ADC_CR1_AWDCH(x)  ((x)<< 0)
+
+#define ADC_CR2_TSVREFE   (1u<<23)
+#define ADC_CR2_SWSTART   (1u<<22)
+#define ADC_CR2_JSWSTART  (1u<<21)
+#define ADC_CR2_EXTTRIG   (1u<<20)
+#define ADC_CR2_EXTSEL(x) ((x)<<17)
+#define ADC_CR2_JEXTTRIG  (1u<<15)
+#define ADC_CR2_JEXTSEL(x) ((x)<<12)
+#define ADC_CR2_ALIGN     (1u<<11)
+#define ADC_CR2_DMA       (1u<< 8)
+#define ADC_CR2_RSTCAL    (1u<< 3)
+#define ADC_CR2_CAL       (1u<< 2)
+#define ADC_CR2_CONT      (1u<< 1)
+#define ADC_CR2_ADON      (1u<< 0)
+
+#define ADC_SMPR1_SMP17(x) ((x)<<21)
+#define ADC_SMPR1_SMP16(x) ((x)<<18)
+#define ADC_SMPR1_SMP15(x) ((x)<<15)
+#define ADC_SMPR1_SMP14(x) ((x)<<12)
+#define ADC_SMPR1_SMP13(x) ((x)<< 9)
+#define ADC_SMPR1_SMP12(x) ((x)<< 6)
+#define ADC_SMPR1_SMP11(x) ((x)<< 3)
+#define ADC_SMPR1_SMP10(x) ((x)<< 0)
+
+#define ADC_SMPR2_SMP9(x) ((x)<<27)
+#define ADC_SMPR2_SMP8(x) ((x)<<24)
+#define ADC_SMPR2_SMP7(x) ((x)<<21)
+#define ADC_SMPR2_SMP6(x) ((x)<<18)
+#define ADC_SMPR2_SMP5(x) ((x)<<15)
+#define ADC_SMPR2_SMP4(x) ((x)<<12)
+#define ADC_SMPR2_SMP3(x) ((x)<< 9)
+#define ADC_SMPR2_SMP2(x) ((x)<< 6)
+#define ADC_SMPR2_SMP1(x) ((x)<< 3)
+#define ADC_SMPR2_SMP0(x) ((x)<< 0)
+
+#define ADC1_BASE 0x40012400
+#define ADC2_BASE 0x40012800
+
 /* SPI/I2S */
 struct spi {
     uint32_t cr1;     /* 00: Control 1 */
