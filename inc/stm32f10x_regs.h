@@ -249,6 +249,16 @@ struct rcc {
 #define RCC_APB2ENR_IOPAEN   (1u<< 2)
 #define RCC_APB2ENR_AFIOEN   (1u<< 0)
 
+#define RCC_CSR_LPWRRSTF     (1u<<31)
+#define RCC_CSR_WWDGRSTF     (1u<<30)
+#define RCC_CSR_IWDGRSTF     (1u<<29)
+#define RCC_CSR_SFTRSTF      (1u<<28)
+#define RCC_CSR_PORRSTF      (1u<<27)
+#define RCC_CSR_PINRSTF      (1u<<26)
+#define RCC_CSR_RMVF         (1u<<24)
+#define RCC_CSR_LSIRDY       (1u<< 1)
+#define RCC_CSR_LSION        (1u<< 0)
+
 #define RCC_BASE 0x40021000
 
 /* General-purpose I/O */

@@ -287,6 +287,25 @@ static bool_t test_usb_cc(void)
     return FALSE;
 }
 
+static void tone_init(void)
+{
+    gpio_configure_pin(gpioa, 7, GPO_pushpull(_2MHz, LOW));
+}
+
+static void tone(int hz, int ms)
+{
+    int us_delay = 1000000 / hz;
+    int h = us_delay / 4;
+    int l = us_delay - h;
+    int n = (ms*1000) / us_delay;
+    while (n--) {
+        gpio_write_pin(gpioa, 7, HIGH);
+        delay_us(h);
+        gpio_write_pin(gpioa, 7, LOW);
+        delay_us(l);
+    }
+}
+
 int main(void)
 {
     int pin_iter = 0;
@@ -303,7 +322,16 @@ int main(void)
     console_init();
     console_crash_on_input();
     pins_init();
-    delay_ms(200); /* 5v settle */
+    tone_init();
+
+    /* Power on: 5v settle for 200ms while sounding a 2kHz double beep on the
+     * speaker.  */
+    if (rcc->csr & RCC_CSR_PORRSTF) {
+        rcc->csr |= RCC_CSR_RMVF; /* clear reset flags */
+        tone(2000, 75);
+        delay_ms(50);
+        tone(2000, 75);
+    }
 
     printk("\n** Greaseweazle TestBoard v%s for Gotek\n", fw_ver);
     printk("** Keir Fraser <keir.xen@gmail.com>\n");
