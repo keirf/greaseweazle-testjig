@@ -1,5 +1,5 @@
 
-export FW_VER := 0.10
+export FW_VER := 1.0
 
 PROJ := GW_TestBoard
 VER := v$(FW_VER)
