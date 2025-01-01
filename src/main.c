@@ -55,16 +55,42 @@ static struct {
     time_t time;
 } cmdrsp;
 
+static void tone_init(void)
+{
+    gpio_configure_pin(gpioa, 7, GPO_pushpull(_2MHz, LOW));
+}
+
+static void tone(int hz, int ms)
+{
+    int us_delay = 1000000 / hz;
+    int h = us_delay / 4;
+    int l = us_delay - h;
+    int n = (ms*1000) / us_delay;
+    while (n--) {
+        gpio_write_pin(gpioa, 7, HIGH);
+        delay_us(h);
+        gpio_write_pin(gpioa, 7, LOW);
+        delay_us(l);
+    }
+}
+
 static void _error(char *s) __attribute__((noreturn));
 static void _error(char *s)
 {
+    int beeps = 0;
+
     printk("ERROR, state %d: '%s'\n", state, s);
 
     for (;;) {
         if (!usbh_cdc_connected())
             system_reset();
         led_7seg_write_string(s);
-        delay_ms(500);
+        if (beeps < 2) {
+            tone(80, 500);
+            beeps++;
+        } else {
+            delay_ms(500);
+        }
         if (!usbh_cdc_connected())
             system_reset();
         led_7seg_write_decimal(state);
@@ -287,30 +313,12 @@ static bool_t test_usb_cc(void)
     return FALSE;
 }
 
-static void tone_init(void)
-{
-    gpio_configure_pin(gpioa, 7, GPO_pushpull(_2MHz, LOW));
-}
-
-static void tone(int hz, int ms)
-{
-    int us_delay = 1000000 / hz;
-    int h = us_delay / 4;
-    int l = us_delay - h;
-    int n = (ms*1000) / us_delay;
-    while (n--) {
-        gpio_write_pin(gpioa, 7, HIGH);
-        delay_us(h);
-        gpio_write_pin(gpioa, 7, LOW);
-        delay_us(l);
-    }
-}
-
 int main(void)
 {
     int pin_iter = 0;
     int outer_iter = 0;
     int success = FALSE;
+    int beeps = 0;
 
     /* Relocate DATA. Initialise BSS. */
     if (&_sdat[0] != &_ldat[0])
@@ -544,7 +552,12 @@ int main(void)
             success = TRUE;
             break;
         case 21:
-            delay_ms(100);
+            if (beeps < 2) {
+                tone(1800, 100);
+                beeps++;
+            } else {
+                delay_ms(100);
+            }
             cmd_led(1);
             break;
         case 22:
