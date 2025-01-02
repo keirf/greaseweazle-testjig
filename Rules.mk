@@ -5,6 +5,8 @@ LD = $(TOOL_PREFIX)ld
 
 PYTHON = python3
 
+DFU_DEV = 0x2e3c:0xdf11
+
 ifneq ($(VERBOSE),1)
 TOOL_PREFIX := @$(TOOL_PREFIX)
 endif
@@ -72,6 +74,9 @@ build.o: $(OBJS)
 	$(OBJCOPY) -O ihex $< $@
 	chmod a-x $@
 
+%.dfu: %.hex
+	$(PYTHON) $(ROOT)/scripts/dfu-convert.py -i $< -D $(DFU_DEV) $@
+
 %.bin: %.elf
 	@echo OBJCOPY $@
 	$(OBJCOPY) -O binary $< $@
@@ -86,7 +91,7 @@ build.o: $(OBJS)
 	$(CC) $(AFLAGS) -c $< -o $@
 
 clean:: $(addprefix _clean_,$(SUBDIRS) $(SUBDIRS-n) $(SUBDIRS-))
-	rm -f *.orig *.rej *~ *.o *.elf *.hex *.bin *.ld $(DEPS)
+	rm -f *.orig *.rej *~ *.o *.elf *.hex *.dfu *.bin *.ld $(DEPS)
 _clean_%: FORCE
 	$(MAKE) -f $(ROOT)/Rules.mk -C $* clean
 

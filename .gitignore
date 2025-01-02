@@ -4,6 +4,7 @@
 *.ld
 *.elf
 *.bin
+*.dfu
 *.hex
 *.orig
 *.rej

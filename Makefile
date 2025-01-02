@@ -17,11 +17,12 @@ all:
 	$(MAKE) -f $(ROOT)/Rules.mk all
 
 clean:
-	rm -f *.hex *.html
+	rm -f *.hex *.dfu *.html
 	$(MAKE) -f $(ROOT)/Rules.mk $@
 
 gotek: all
 	cp src/$(PROJ).hex $(PROJ)-$(VER).hex
+	cp src/$(PROJ).dfu $(PROJ)-$(VER).dfu
 
 dist:
 	rm -rf gw_testboard-*
@@ -29,6 +30,7 @@ dist:
 	$(MAKE) clean
 	$(MAKE) gotek
 	cp -a $(PROJ)-$(VER).hex gw_testboard-$(VER)/
+	cp -a $(PROJ)-$(VER).dfu gw_testboard-$(VER)/
 	$(MAKE) clean
 	cp -a COPYING gw_testboard-$(VER)/
 	zip -r gw_testboard-$(VER).zip gw_testboard-$(VER)
@@ -38,11 +40,8 @@ mrproper: clean
 
 else
 
-upd:
-	$(MAKE) -C src -f $(ROOT)/Rules.mk $(PROJ).elf $(PROJ).bin $(PROJ).hex
-
 all:
-	$(MAKE) -C src -f $(ROOT)/Rules.mk $(PROJ).elf $(PROJ).bin $(PROJ).hex
+	$(MAKE) -C src -f $(ROOT)/Rules.mk $(PROJ).elf $(PROJ).bin $(PROJ).hex $(PROJ).dfu
 
 endif
 
