@@ -8,6 +8,10 @@ no binary releases: You will need to compile the firmware yourself.
 If you want to build a Test Jig, you can find the design files
 [here][gwdesign].
 
+### Instructions for use
+
+Download the [PDF document][jigdoc].
+
 ### Building the firmware
 
 The following instructions apply specifically to **Ubuntu**. They should
@@ -45,3 +49,4 @@ includes third-party code, you should include or link to the
 
 [gwdesign]: https://github.com/keirf/greaseweazle/wiki/Design-Files
 [ffflash]: https://github.com/keirf/flashfloppy/wiki/Firmware-Programming
+[jigdoc]: https://github.com/keirf/greaseweazle/wiki/assets/testjig/gw_test_jig.pdf
