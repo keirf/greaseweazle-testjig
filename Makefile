@@ -44,12 +44,3 @@ all:
 	$(MAKE) -C src -f $(ROOT)/Rules.mk $(PROJ).elf $(PROJ).bin $(PROJ).hex $(PROJ).dfu
 
 endif
-
-BAUD=115200
-DEV=/dev/ttyUSB0
-
-ocd: gotek
-	python3 scripts/openocd/flash.py `pwd`/$(PROJ)-$(VER).hex
-
-serial:
-	sudo miniterm.py $(DEV) 3000000
